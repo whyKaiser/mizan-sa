@@ -36,7 +36,7 @@ test("Malformed preferences are recovered without an exception", () => {
   assert.deepEqual(safeRead(localStorage, "broken", []), []);
 });
 test("Unconfigured cloud auth fails explicitly rather than pretending success", () => {
-  assert.throws(() => requireClient(), /قيد التهيئة/);
+  assert.throws(() => requireClient(null), /قيد التهيئة/);
 });
 test("Storage write failure propagates; save cannot be reported as success", async () => {
   const original = localStorage.setItem;

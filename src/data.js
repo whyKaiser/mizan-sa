@@ -84,12 +84,12 @@ export async function deleteProject(p, user) {
   if (!data?.length)
     throw new Error("تغير المشروع من جهاز آخر. حدّث القائمة قبل الحذف.");
 }
-export function requireClient() {
-  if (!client)
+export function requireClient(connection = client) {
+  if (!connection)
     throw new Error(
       "تسجيل الحسابات قيد التهيئة. يمكنك استخدام وضع الزائر الآن.",
     );
-  return client;
+  return connection;
 }
 export function message(error) {
   const s = error?.message || String(error);
