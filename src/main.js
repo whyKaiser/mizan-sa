@@ -1,6 +1,8 @@
 import "./styles.css";
 import * as D from "./domain.js";
 import * as U from "./ui.js";
+import { backend } from "./config.js";
+import { validatePassword, changePassword } from "./auth.js";
 import {
   client,
   requireClient,
@@ -410,7 +412,7 @@ async function action(name, button) {
   if (a === "profile") {
     dialog(
       "الملف الشخصي",
-      `<form data-form="profile">${U.field("الاسم الكامل", "name", userName(), "text", 'required maxlength="80"')}${user ? U.field("البريد الإلكتروني", "email", user.email, "email", "disabled") : '<p class="hint">أنت في وضع الزائر. تسجيل الدخول يحفظ المشاريع في حساب مستقل.</p>'}<button type="submit" class="btn full">حفظ</button></form>${!user ? U.button("تسجيل الدخول / إنشاء حساب", "end-guest", "text-button full") : ""}${guestProjects().length && user ? U.button("نقل مشاريع الزائر إلى حسابي", "import-guest", "secondary full") : ""}${localStorage.getItem("mizan-platform-v1") && !localStorage.getItem("mizan-legacy-imported") ? U.button("استعادة مشاريع النسخة السابقة", "import-legacy", "secondary full") : ""}`,
+      `<form data-form="profile">${U.field("الاسم الكامل", "name", userName(), "text", 'required maxlength="80"')}${user ? U.field("البريد الإلكتروني", "email", user.email, "email", "disabled") : '<p class="hint">أنت في وضع الزائر. تسجيل الدخول يحفظ المشاريع في حساب مستقل.</p>'}<button type="submit" class="btn full">حفظ</button></form>${user ? U.button("تغيير كلمة المرور", "change-password", "secondary full") : U.button("تسجيل الدخول / إنشاء حساب", "end-guest", "text-button full")}${guestProjects().length && user ? U.button("نقل مشاريع الزائر إلى حسابي", "import-guest", "secondary full") : ""}${localStorage.getItem("mizan-platform-v1") && !localStorage.getItem("mizan-legacy-imported") ? U.button("استعادة مشاريع النسخة السابقة", "import-legacy", "secondary full") : ""}`,
     );
     return;
   }
@@ -420,6 +422,14 @@ async function action(name, button) {
     sessionStorage.removeItem("mizan-guest-session");
     auth = "login";
     render();
+    return;
+  }
+  if (a === "change-password") {
+    if (!user) throw new Error("سجّل الدخول لتغيير كلمة المرور.");
+    dialog(
+      "تغيير كلمة المرور",
+      `<form data-form="change-password">${U.passwordField("كلمة المرور الحالية", "currentPassword")}${U.passwordField("كلمة المرور الجديدة", "password", true)}${U.passwordField("تأكيد كلمة المرور الجديدة", "confirm", true)}<p class="hint">احفظ كلمة المرور في مكان آمن. استعادتها بالبريد غير متاحة في النسخة الحالية.</p><button class="btn full" type="submit">تغيير كلمة المرور</button></form>`,
+    );
     return;
   }
   if (a === "import-guest") {
@@ -508,7 +518,7 @@ async function action(name, button) {
   if (a === "help") {
     dialog(
       "المساعدة والدعم",
-      `<div class="help-list"><details open><summary>كيف أبدأ مشروعًا؟</summary><p>اختر «إنشاء مشروع جديد»، حدد النوع وأدخل الاسم ورأس المال، ثم تكاليفك الشهرية وتكلفة الوحدة وسعر البيع والمبيعات.</p></details><details><summary>ما الفرق بين الثابت والمتغير؟</summary><p>الثابت مثل الإيجار، والمتغير يتكرر مع كل وحدة. إجمالي المتغير = تكلفة الوحدة × عدد الوحدات. أدخل تكلفة المعدات مرة واحدة ضمن تقدير فترة التأسيس إن أردت، ولا تكررها شهريًا دون قصد.</p></details><details><summary>كيف يحسب هامش الربح والتعادل؟</summary><p>الهامش = صافي الربح ÷ الإيرادات × 100. التعادل = الثابت ÷ (السعر − تكلفة الوحدة)، مع تقريب الوحدات للأعلى. إذا كان سعر البيع لا يغطي التكلفة لا توجد نقطة تعادل قابلة للتحقق.</p></details><details><summary>كيف أحفظ ملف PDF؟</summary><p>افتح التقرير ثم «طباعة / حفظ PDF»، واختر «حفظ بصيغة PDF» من نافذة جهازك. أوقف ترويسات المتصفح عند الحاجة.</p></details><details><summary>هل المخطط المالي هو المحاكي؟</summary><p>التخطيط تقديرات شهرية. المحاكي يسجل عمليات مستقلة، ويبدأ برأس المال كرصيد نقدي افتتاحي. أدخل تكلفة البضاعة مع البيع لتظهر في قائمة الدخل وينخفض المخزون.</p></details><details><summary>أين تحفظ مشاريعي؟</summary><p>${user ? "في حسابك، ويمكن فتحها بعد تسجيل الدخول من جهاز آخر. تأكد من نجاح الحفظ قبل الإغلاق." : "مشاريع الزائر على هذا المتصفح فقط. يمكنك نقلها إلى حسابك من الملف الشخصي بعد تسجيل الدخول."}</p></details><details><summary>تعذر الحفظ أو تسجيل الدخول</summary><p>تحقق من اتصال الإنترنت، وفعّل البريد من الرسالة. لاستعادة كلمة المرور استخدم «نسيت كلمة المرور؟». عند تعارض تعديل من جهازين، حدّث المشروع قبل تعديله مجددًا.</p></details></div>`,
+      `<div class="help-list"><details open><summary>كيف أبدأ مشروعًا؟</summary><p>اختر «إنشاء مشروع جديد»، حدد النوع وأدخل الاسم ورأس المال، ثم تكاليفك الشهرية وتكلفة الوحدة وسعر البيع والمبيعات.</p></details><details><summary>ما الفرق بين الثابت والمتغير؟</summary><p>الثابت مثل الإيجار، والمتغير يتكرر مع كل وحدة. إجمالي المتغير = تكلفة الوحدة × عدد الوحدات. أدخل تكلفة المعدات مرة واحدة ضمن تقدير فترة التأسيس إن أردت، ولا تكررها شهريًا دون قصد.</p></details><details><summary>كيف يحسب هامش الربح والتعادل؟</summary><p>الهامش = صافي الربح ÷ الإيرادات × 100. التعادل = الثابت ÷ (السعر − تكلفة الوحدة)، مع تقريب الوحدات للأعلى. إذا كان سعر البيع لا يغطي التكلفة لا توجد نقطة تعادل قابلة للتحقق.</p></details><details><summary>كيف أحفظ ملف PDF؟</summary><p>افتح التقرير ثم «طباعة / حفظ PDF»، واختر «حفظ بصيغة PDF» من نافذة جهازك. أوقف ترويسات المتصفح عند الحاجة.</p></details><details><summary>هل المخطط المالي هو المحاكي؟</summary><p>التخطيط تقديرات شهرية. المحاكي يسجل عمليات مستقلة، ويبدأ برأس المال كرصيد نقدي افتتاحي. أدخل تكلفة البضاعة مع البيع لتظهر في قائمة الدخل وينخفض المخزون.</p></details><details><summary>أين تحفظ مشاريعي؟</summary><p>${user ? "في حسابك، ويمكن فتحها بعد تسجيل الدخول من جهاز آخر. تأكد من نجاح الحفظ قبل الإغلاق." : "مشاريع الزائر على هذا المتصفح فقط. يمكنك نقلها إلى حسابك من الملف الشخصي بعد تسجيل الدخول."}</p></details><details><summary>تعذر الحفظ أو تسجيل الدخول</summary><p>تحقق من اتصال الإنترنت ومن صحة البريد وكلمة المرور. التسجيل لا يحتاج رسالة تأكيد، واستعادة كلمة المرور بالبريد غير متاحة. لتغييرها وأنت تعرف الحالية افتح الملف الشخصي. عند تعارض تعديل من جهازين، حدّث المشروع قبل تعديله مجددًا.</p></details></div>`,
     );
     return;
   }
@@ -551,10 +561,7 @@ async function submit(form) {
     return;
   }
   if (kind === "signup") {
-    if (f.password !== f.confirm)
-      throw new Error("كلمتا المرور غير متطابقتين.");
-    if (!/[A-Za-z\u0600-\u06ff]/.test(f.password) || !/[0-9]/.test(f.password))
-      throw new Error("استخدم أحرفًا وأرقامًا في كلمة المرور.");
+    validatePassword(f.password, f.confirm);
     const { data, error } = await requireClient().auth.signUp({
       email: f.email.trim(),
       password: f.password,
@@ -567,9 +574,14 @@ async function submit(form) {
     if (data.session) {
       user = data.user;
       guest = false;
+      sessionStorage.removeItem("mizan-guest-session");
       view = "home";
       await load();
     } else {
+      if (!backend.emailConfirmation)
+        throw new Error(
+          "لم يكتمل التسجيل المباشر. إعدادات الحسابات تحتاج مراجعة؛ لم يتم تسجيل دخولك.",
+        );
       auth = "login";
       root.innerHTML = U.authScreen(
         auth,
@@ -579,6 +591,8 @@ async function submit(form) {
     return;
   }
   if (kind === "forgot") {
+    if (!backend.emailRecovery)
+      throw new Error("استعادة كلمة المرور بالبريد غير متاحة في هذه النسخة.");
     const { error } = await requireClient().auth.resetPasswordForEmail(
       f.email.trim(),
       { redirectTo: redirectURL() },
@@ -591,8 +605,9 @@ async function submit(form) {
     return;
   }
   if (kind === "reset") {
-    if (f.password !== f.confirm)
-      throw new Error("كلمتا المرور غير متطابقتين.");
+    if (!backend.emailRecovery)
+      throw new Error("استعادة كلمة المرور بالبريد غير متاحة في هذه النسخة.");
+    validatePassword(f.password, f.confirm);
     const { error } = await requireClient().auth.updateUser({
       password: f.password,
     });
@@ -603,6 +618,19 @@ async function submit(form) {
     auth = "welcome";
     view = "home";
     await load();
+    return;
+  }
+  if (kind === "change-password") {
+    user = await changePassword(
+      requireClient(),
+      user,
+      f.currentPassword,
+      f.password,
+      f.confirm,
+    );
+    form.reset();
+    closeDialog();
+    announce("تم تغيير كلمة المرور. استخدم الجديدة عند تسجيل الدخول.");
     return;
   }
   if (kind === "info") {

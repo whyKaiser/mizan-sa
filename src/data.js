@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { backend } from "./config.js";
 export const client =
-  backend.url && backend.key
+  backend.authReady && backend.url && backend.key
     ? createClient(backend.url, backend.key, {
         auth: {
           storageKey: "mizan-auth-v2",
@@ -24,16 +24,16 @@ export function safeRead(storage, key, fallback) {
 export function guestProjects() {
   return safeRead(localStorage, GUEST_KEY, []);
 }
-export async function listProjects(user) {
+export async function listProjects(user, connection = client) {
   if (!user) return guestProjects();
-  const { data, error } = await client
+  const { data, error } = await requireClient(connection)
     .from("mizan_projects")
     .select("id,data,revision,updated_at")
     .order("updated_at", { ascending: false });
   if (error) throw error;
   return data.map((r) => ({ ...r.data, id: r.id, revision: r.revision }));
 }
-export async function saveProject(p, user) {
+export async function saveProject(p, user, connection = client) {
   if (!user) {
     const all = guestProjects(),
       i = all.findIndex((x) => x.id === p.id);
@@ -52,12 +52,12 @@ export async function saveProject(p, user) {
     updated_at: new Date().toISOString(),
   };
   const query = revision
-    ? client
+    ? requireClient(connection)
         .from("mizan_projects")
         .update(row)
         .eq("id", p.id)
         .eq("revision", revision)
-    : client.from("mizan_projects").insert(row);
+    : requireClient(connection).from("mizan_projects").insert(row);
   const { data, error } = await query.select("revision").maybeSingle();
   if (error) throw error;
   if (!data)
@@ -66,7 +66,7 @@ export async function saveProject(p, user) {
     );
   return { ...p, revision: data.revision };
 }
-export async function deleteProject(p, user) {
+export async function deleteProject(p, user, connection = client) {
   if (!user) {
     localStorage.setItem(
       GUEST_KEY,
@@ -74,7 +74,7 @@ export async function deleteProject(p, user) {
     );
     return;
   }
-  const { data, error } = await client
+  const { data, error } = await requireClient(connection)
     .from("mizan_projects")
     .delete()
     .eq("id", p.id)
@@ -105,6 +105,10 @@ export function message(error) {
     return "تعذر الوصول إلى المشروع. سجل الدخول من جديد.";
   if (/Password should/i.test(s))
     return "استخدم كلمة مرور قوية من 8 أحرف على الأقل.";
+  if (/already registered|already been registered/i.test(s))
+    return "البريد مسجل مسبقًا. استخدم تسجيل الدخول.";
+  if (/same_password|different from the old|different password/i.test(s))
+    return "اختر كلمة مرور مختلفة عن الحالية.";
   return /[\u0600-\u06ff]/.test(s)
     ? s
     : "تعذرت العملية. أعد المحاولة، أو راجع إعدادات حسابك.";

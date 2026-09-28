@@ -10,13 +10,13 @@ create table if not exists public.mizan_projects (
   constraint mizan_payload_object check (jsonb_typeof(data) = 'object'),
   constraint mizan_payload_required check (data ?& array['id','name','costs','journal','reports']),
   constraint mizan_payload_identity check ((data->>'id') is not null and data->>'id' = id::text),
-  constraint mizan_payload_name check (length(btrim(data->>'name')) between 1 and 120),
+  constraint mizan_payload_name check (jsonb_typeof(data->'name') = 'string' and length(btrim(data->>'name')) between 1 and 120),
   constraint mizan_payload_size check (octet_length(data::text) <= 8388608),
   constraint mizan_payload_arrays check (jsonb_typeof(data->'costs') = 'array' and jsonb_typeof(data->'journal') = 'array' and jsonb_typeof(data->'reports') = 'array')
 );
 create index if not exists mizan_projects_owner_updated on public.mizan_projects (user_id, updated_at desc);
 alter table public.mizan_projects enable row level security;
-revoke all on public.mizan_projects from anon, authenticated;
+revoke all on public.mizan_projects from public, anon, authenticated;
 grant select, insert, update, delete on public.mizan_projects to authenticated;
 
 -- Rerunning this bootstrap preserves rows; it replaces only this app's policies.

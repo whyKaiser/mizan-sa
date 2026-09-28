@@ -154,7 +154,12 @@ class Guide:
         self.c.setFont('Courier', 9)
         y = self.y-8
         for line in lines:
-            self.c.drawString(M+12, y, line)
+            if re.search(r'[\u0600-\u06ff]', line):
+                self.c.setFont('Arabic', 9)
+                self.c.drawString(M+12, y, visual(line))
+            else:
+                self.c.setFont('Courier', 9)
+                self.c.drawString(M+12, y, line)
             y -= 13
         self.y -= height+10
 
